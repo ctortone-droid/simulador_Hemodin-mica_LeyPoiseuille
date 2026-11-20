@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de la Ley de Poiseuille — Física Biológica Veterinaria (Offline)</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-alt: #f1f5f9;
+      --border: #cbd5e1;
+      --border-soft: #e2e8f0;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1d4ed8;
+      --accent-hover: #1e40af;
+      --nominal: #047857;
+      --warn: #b45309;
+      --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+    .mono {
+      font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-soft);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .brand { font-weight: 700; font-size: 16px; color: var(--text); white-space: nowrap; }
+    nav { display: flex; gap: 20px; font-size: 13px; font-weight: 500; }
+    nav a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+    nav a:hover { color: var(--text); text-decoration: underline; }
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--surface-alt); }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .container { max-width: 1360px; margin: 0 auto; padding: 20px 24px 48px; }
+    .intro { margin-bottom: 20px; }
+    .intro h1 { margin: 6px 0; font-size: clamp(22px, 2.5vw, 30px); line-height: 1.2; }
+    .intro p { margin: 0; color: var(--muted); max-width: 78ch; font-size: 14px; }
+    .meta-line { font-size: 12px; color: var(--muted); }
+    .layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .panel h2, .panel h3 { margin: 0 0 10px; font-size: 15px; }
+    .control-group { margin-bottom: 16px; }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .control-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .preset-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .preset-btn {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .preset-btn:hover { border-color: var(--accent); }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 720px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .kpi-val { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .formula-bar {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+    canvas {
+      width: 100%;
+      height: 270px;
+      display: block;
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .tabs { display: inline-flex; gap: 4px; background: var(--surface-alt); padding: 4px; border-radius: 6px; }
+    .tab {
+      border: none;
+      background: transparent;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tab.active { background: #ffffff; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .status-box {
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+    .status-nominal { background: #ecfdf5; border-color: #a7f3d0; color: #064e3b; }
+    .status-hypo { background: #fffbeb; border-color: #fde68a; color: #78350f; }
+    .status-severe { background: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+    .status-hyper { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+    .limits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .limit-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 12px;
+    }
+    dialog {
+      max-width: 720px;
+      width: calc(100% - 32px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    dialog::backdrop { background: rgba(15, 23, 42, 0.5); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Física Biológica · Ley de Poiseuille (Offline)</div>
+    <nav>
+      <a href="#simulador">Simulador</a>
+      <a href="#grafico">Gráfico de Relación</a>
+      <a href="#limites">Límites del Modelo</a>
+    </nav>
+    <button class="btn btn-primary" type="button" onclick="document.getElementById('limitsDialog').showModal()">
+      Límites del Modelo
+    </button>
+  </header>
+
+  <main class="container" id="simulador">
+    <section class="intro">
+      <div class="meta-line">Medicina Veterinaria · Primer Año · Sistema CGS (cm, poise, dinas/cm²)</div>
+      <h1>Simulador de Hemodinámica: Ley de Poiseuille</h1>
+      <p>
+        Explora cómo el radio del vaso (<em>r</em>), la viscosidad sanguínea (<em>&eta;</em>) y la diferencia de presión (&Delta;<em>P</em>) determinan el caudal (<em>Q</em>) y qué consecuencias genera en un organismo de circulación cerrada.
+      </p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel">
+        <h2>Variables Independientes</h2>
+        <div class="preset-grid">
+          <button class="preset-btn" type="button" onclick="applyPreset(0.12, 0.04, 25000, 10)">Basal (Perro)</button>
+          <button class="preset-btn" type="button" onclick="applyPreset(0.06, 0.04, 25000, 10)">Vasoconstricción</button>
+          <button class="preset-btn" type="button" onclick="applyPreset(0.16, 0.04, 25000, 10)">Vasodilatación</button>
+          <button class="preset-btn" type="button" onclick="applyPreset(0.12, 0.08, 25000, 10)">Poliglobulia</button>
+          <button class="preset-btn" type="button" onclick="applyPreset(0.12, 0.022, 25000, 10)">Anemia</button>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="rSlider">Radio del vaso (r)</label>
+            <span class="mono" id="rVal">0.12 cm</span>
+          </div>
+          <input id="rSlider" type="range" min="0.04" max="0.30" step="0.01" value="0.12" />
+          <div class="control-sub">Influye a la cuarta potencia (r&#8308;). Rango: 0.04 – 0.30 cm</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="etaSlider">Viscosidad sanguínea (&eta;)</label>
+            <span class="mono" id="etaVal">0.040 poise</span>
+          </div>
+          <input id="etaSlider" type="range" min="0.015" max="0.100" step="0.001" value="0.040" />
+          <div class="control-sub">Relacionada con hematocrito y proteínas. Basal mamíferos: ~0.040 P</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="dpSlider">Diferencia de presión (&Delta;P)</label>
+            <span class="mono" id="dpVal">25,000 din/cm²</span>
+          </div>
+          <input id="dpSlider" type="range" min="5000" max="120000" step="1000" value="25000" />
+          <div class="control-sub mono" id="dpMmHg">Equivalente clínico: ~18.8 mmHg</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="lSlider">Longitud del segmento (l)</label>
+            <span class="mono" id="lVal">10.0 cm</span>
+          </div>
+          <input id="lSlider" type="range" min="2.0" max="25.0" step="0.5" value="10.0" />
+        </div>
+
+        <div id="statusBox" class="status-box status-nominal"></div>
+      </aside>
+
+      <div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Caudal (Q)</div>
+            <div class="kpi-val mono" id="qOut">5.09 cm³/s</div>
+            <div class="kpi-sub mono" id="qMinOut">305.4 mL/min</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Resistencia (R<sub>H</sub>)</div>
+            <div class="kpi-val mono" id="rhOut">4,913</div>
+            <div class="kpi-sub mono">dinas·s/cm&#8309;</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Velocidad media</div>
+            <div class="kpi-val mono" id="vOut">112.5 cm/s</div>
+            <div class="kpi-sub mono" id="ratioOut">1.00&times; basal</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">&Delta;P compensatoria</div>
+            <div class="kpi-val mono" id="compOut">25,000</div>
+            <div class="kpi-sub mono" id="effortOut">Esfuerzo: 1.00&times;</div>
+          </div>
+        </div>
+
+        <div class="formula-bar mono" id="formulaBar"></div>
+
+        <div class="panel" style="margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
+            <h3 style="margin:0;">Modelo Visual del Vaso y Circuito Cerrado</h3>
+            <button class="btn" type="button" id="toggleAnimBtn" onclick="togglePlay()">Pausar</button>
+          </div>
+          <canvas id="vesselCanvas"></canvas>
+        </div>
+
+        <div class="panel" id="grafico">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
+            <div>
+              <h3 style="margin:0;">Gráfico de Relación entre Variables</h3>
+              <div class="control-sub" id="chartSubtitle"></div>
+            </div>
+            <div class="tabs">
+              <button class="tab active" type="button" onclick="setChartVar('radius', this)">Q vs. Radio (r)</button>
+              <button class="tab" type="button" onclick="setChartVar('viscosity', this)">Q vs. Viscosidad (&eta;)</button>
+              <button class="tab" type="button" onclick="setChartVar('pressure', this)">Q vs. Presión (&Delta;P)</button>
+            </div>
+          </div>
+          <svg id="chartSvg" viewBox="0 0 740 280" style="width:100%; height:auto;"></svg>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel" id="limites" style="margin-top: 24px;">
+      <h2>Límites del Modelo (Transparencia Epistemológica · Caja Blanca)</h2>
+      <p style="font-size:13px; color:var(--muted); margin-top:4px;">
+        Todo modelo científico recorta la realidad para poder calcularla. Al interpretar este simulador en Medicina Veterinaria, recuerda qué fenómenos fisiológicos quedan fuera de la ecuación de Poiseuille:
+      </p>
+      <div class="limits-grid">
+        <div class="limit-card"><strong>01. Sangre no newtoniana:</strong> Su viscosidad cambia con la velocidad del flujo y disminuye en capilares muy finos (efecto F&aring;hr&aelig;us–Lindqvist).</div>
+        <div class="limit-card"><strong>02. Vasos elásticos:</strong> Las arterias se distienden con la presión transmural y poseen músculo liso con regulación activa; no son tubos rígidos.</div>
+        <div class="limit-card"><strong>03. Flujo pulsátil:</strong> El corazón bombea en sístole y diástole; la ecuación asume &Delta;P estacionaria y continua.</div>
+        <div class="limit-card"><strong>04. Turbulencia (Re &gt; 2000):</strong> En la aorta, válvulas o estenosis severas aparece flujo turbulento y la ley deja de cumplirse exactamente.</div>
+        <div class="limit-card"><strong>05. Circuito cerrado en red:</strong> El organismo combina vasos en serie y en paralelo con retorno venoso acoplado al gasto cardíaco.</div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="limitsDialog">
+    <h2 style="margin-top:0;">Límites del Modelo (Caja Blanca)</h2>
+    <p style="font-size:13px; color:var(--muted);">
+      La Ley de Poiseuille (Q = &pi;&middot;r&#8308;&middot;&Delta;P / (8&middot;&eta;&middot;l)) describe con precisión un fluido newtoniano, laminar y estacionario en un tubo cilíndrico rígido. En un animal vivo existen desviaciones importantes: viscosidad dependiente del cizallamiento, elasticidad arterial, pulsatilidad cardíaca, bifurcaciones turbulentas y autorregulación miogénica.
+    </p>
+    <div style="text-align:right; margin-top:16px;">
+      <button class="btn btn-primary" type="button" onclick="document.getElementById('limitsDialog').close()">Cerrar</button>
+    </div>
+  </dialog>
+
+  <script>
+    var state = { r: 0.12, eta: 0.04, dp: 25000, l: 10.0, chartVar: 'radius', playing: true };
+    var BASAL = { r: 0.12, eta: 0.04, dp: 25000, l: 10.0 };
+    function calcQ(r, eta, dp, l) { return (Math.PI * Math.pow(r, 4) * dp) / (8 * eta * l); }
+    function calcR(r, eta, l) { return (8 * eta * l) / (Math.PI * Math.pow(r, 4)); }
+    var BASAL_Q = calcQ(BASAL.r, BASAL.eta, BASAL.dp, BASAL.l);
+
+    var rSlider = document.getElementById('rSlider');
+    var etaSlider = document.getElementById('etaSlider');
+    var dpSlider = document.getElementById('dpSlider');
+    var lSlider = document.getElementById('lSlider');
+
+    function syncFromInputs() {
+      state.r = parseFloat(rSlider.value);
+      state.eta = parseFloat(etaSlider.value);
+      state.dp = parseFloat(dpSlider.value);
+      state.l = parseFloat(lSlider.value);
+      updateUI();
+    }
+
+    rSlider.addEventListener('input', syncFromInputs);
+    etaSlider.addEventListener('input', syncFromInputs);
+    dpSlider.addEventListener('input', syncFromInputs);
+    lSlider.addEventListener('input', syncFromInputs);
+
+    function applyPreset(r, eta, dp, l) {
+      rSlider.value = r; etaSlider.value = eta; dpSlider.value = dp; lSlider.value = l;
+      syncFromInputs();
+    }
+
+    function setChartVar(v, btn) {
+      state.chartVar = v;
+      var tabs = document.querySelectorAll('.tab');
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+      btn.classList.add('active');
+      drawChart();
+    }
+
+    function togglePlay() {
+      state.playing = !state.playing;
+      document.getElementById('toggleAnimBtn').textContent = state.playing ? 'Pausar' : 'Reanudar';
+    }
+
+    function updateUI() {
+      document.getElementById('rVal').textContent = state.r.toFixed(2) + ' cm';
+      document.getElementById('etaVal').textContent = state.eta.toFixed(3) + ' poise';
+      document.getElementById('dpVal').textContent = Math.round(state.dp).toLocaleString('es-AR') + ' din/cm²';
+      document.getElementById('dpMmHg').textContent = 'Equivalente clínico: ~' + (state.dp / 1333.22).toFixed(1) + ' mmHg';
+      document.getElementById('lVal').textContent = state.l.toFixed(1) + ' cm';
+
+      var q = calcQ(state.r, state.eta, state.dp, state.l);
+      var rh = calcR(state.r, state.eta, state.l);
+      var vMean = q / (Math.PI * state.r * state.r);
+      var ratio = q / BASAL_Q;
+      var compDp = BASAL_Q * rh;
+      var effort = compDp / BASAL.dp;
+
+      document.getElementById('qOut').textContent = q.toFixed(2) + ' cm³/s';
+      document.getElementById('qMinOut').textContent = (q * 60).toFixed(1) + ' mL/min';
+      document.getElementById('rhOut').textContent = Math.round(rh).toLocaleString('es-AR');
+      document.getElementById('vOut').textContent = vMean.toFixed(1) + ' cm/s';
+      document.getElementById('ratioOut').textContent = ratio.toFixed(2) + '× basal';
+      document.getElementById('compOut').textContent = Math.round(compDp).toLocaleString('es-AR');
+      document.getElementById('effortOut').textContent = 'Esfuerzo: ' + effort.toFixed(2) + '×';
+
+      document.getElementById('formulaBar').innerHTML =
+        '<strong>Q</strong> = (&pi; &middot; (' + state.r.toFixed(2) + ')&#8308; &middot; ' +
+        Math.round(state.dp).toLocaleString('es-AR') + ') / (8 &middot; ' +
+        state.eta.toFixed(3) + ' &middot; ' + state.l.toFixed(1) + ') = <strong>' +
+        q.toFixed(2) + ' cm³/s</strong>';
+
+      var box = document.getElementById('statusBox');
+      box.className = 'status-box ';
+      if (ratio < 0.35) {
+        box.className += 'status-severe';
+        box.innerHTML = '<strong>&#10006; Hipoperfusión crítica / Isquemia:</strong> Para mantener el caudal basal en circuito cerrado, el corazón debería generar ' + effort.toFixed(1) + '&times; la presión normal.';
+      } else if (ratio < 0.78) {
+        box.className += 'status-hypo';
+        box.innerHTML = '<strong>&#9650; Hipoperfusión moderada:</strong> Disminuye el aporte capilar; el organismo compensa con mayor trabajo cardíaco (' + effort.toFixed(2) + '&times;).';
+      } else if (ratio > 1.85) {
+        box.className += 'status-hyper';
+        box.innerHTML = '<strong>&#9650; Hiperperfusión:</strong> Flujo elevado hacia el lecho capilar (' + ratio.toFixed(2) + '&times; respecto al basal).';
+      } else {
+        box.className += 'status-nominal';
+        box.innerHTML = '<strong>&#9679; Perfusión tisular nominal:</strong> Caudal compatible con equilibrio hemodinámico basal.';
+      }
+      drawChart();
+    }
+
+    function drawChart() {
+      var svg = document.getElementById('chartSvg');
+      var W = 740, H = 280, pad = { t: 20, r: 24, b: 44, l: 62 };
+      var pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+      var minX, maxX, curX, subtitle, xLabel;
+
+      if (state.chartVar === 'radius') {
+        minX = 0.04; maxX = 0.30; curX = state.r;
+        subtitle = 'Relación cuártica Q ∝ r⁴ (manteniendo η, ΔP y l actuales)';
+        xLabel = 'Radio r [cm]';
+      } else if (state.chartVar === 'viscosity') {
+        minX = 0.015; maxX = 0.100; curX = state.eta;
+        subtitle = 'Relación inversa Q ∝ 1/η (manteniendo r, ΔP y l actuales)';
+        xLabel = 'Viscosidad η [poise]';
+      } else {
+        minX = 5000; maxX = 120000; curX = state.dp;
+        subtitle = 'Relación lineal directa Q ∝ ΔP (pendiente = 1/R_H)';
+        xLabel = 'Diferencia de presión ΔP [dinas/cm²]';
+      }
+      document.getElementById('chartSubtitle').textContent = subtitle;
+
+      var pts = [];
+      for (var i = 0; i <= 60; i++) {
+        var x = minX + ((maxX - minX) * i) / 60;
+        var q = state.chartVar === 'radius'
+          ? calcQ(x, state.eta, state.dp, state.l)
+          : state.chartVar === 'viscosity'
+          ? calcQ(state.r, x, state.dp, state.l)
+          : calcQ(state.r, state.eta, x, state.l);
+        pts.push({ x: x, y: q });
+      }
+      var curQ = calcQ(state.r, state.eta, state.dp, state.l);
+      var rawMaxY = Math.max(curQ, 1);
+      for (var j = 0; j < pts.length; j++) if (pts[j].y > rawMaxY) rawMaxY = pts[j].y;
+      var mag = Math.pow(10, Math.floor(Math.log10(rawMaxY)));
+      var maxY = Math.ceil((rawMaxY * 1.1) / mag) * mag;
+
+      function sx(x) { return pad.l + ((x - minX) / (maxX - minX)) * pw; }
+      function sy(y) { return pad.t + ph - Math.min(1, y / maxY) * ph; }
+
+      var d = pts.map(function(p, idx) {
+        return (idx === 0 ? 'M ' : 'L ') + sx(p.x).toFixed(1) + ' ' + sy(p.y).toFixed(1);
+      }).join(' ');
+
+      var html = '';
+      for (var k = 0; k <= 4; k++) {
+        var yVal = (maxY * k) / 4;
+        var yy = sy(yVal);
+        html += '<line x1="' + pad.l + '" y1="' + yy + '" x2="' + (pad.l + pw) + '" y2="' + yy + '" stroke="#e2e8f0" />';
+        html += '<text x="' + (pad.l - 8) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="#475569" font-family="monospace">' + (yVal >= 10 ? yVal.toFixed(0) : yVal.toFixed(1)) + '</text>';
+      }
+      html += '<line x1="' + pad.l + '" y1="' + pad.t + '" x2="' + pad.l + '" y2="' + (pad.t + ph) + '" stroke="#94a3b8" stroke-width="1.5" />';
+      html += '<line x1="' + pad.l + '" y1="' + (pad.t + ph) + '" x2="' + (pad.l + pw) + '" y2="' + (pad.t + ph) + '" stroke="#94a3b8" stroke-width="1.5" />';
+      html += '<text x="' + (pad.l + pw / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">' + xLabel + '</text>';
+      html += '<text x="16" y="' + (pad.t + ph / 2) + '" text-anchor="middle" transform="rotate(-90 16 ' + (pad.t + ph / 2) + ')" font-size="12" font-weight="600" fill="#334155">Caudal Q [cm³/s]</text>';
+      html += '<path d="' + d + '" fill="none" stroke="#1d4ed8" stroke-width="2.5" />';
+      html += '<circle cx="' + sx(curX) + '" cy="' + sy(curQ) + '" r="6" fill="#1d4ed8" stroke="#ffffff" stroke-width="2" />';
+      svg.innerHTML = html;
+    }
+
+    var canvas = document.getElementById('vesselCanvas');
+    var ctx = canvas.getContext('2d');
+    var cells = [];
+    for (var i = 0; i < 64; i++) {
+      cells.push({ x: ((i * 53) % 100) / 100, y: ((i * 37) % 176 - 88) / 100 });
+    }
+    var lastT = performance.now();
+
+    function animate(now) {
+      var dt = Math.min((now - lastT) / 1000, 0.05);
+      lastT = now;
+      var rect = canvas.getBoundingClientRect();
+      var w = Math.max(320, rect.width), h = 270;
+      if (canvas.width !== Math.round(w)) { canvas.width = Math.round(w); canvas.height = h; }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      var q = calcQ(state.r, state.eta, state.dp, state.l);
+      var vMean = q / (Math.PI * state.r * state.r);
+      var rFrac = (state.r - 0.04) / (0.30 - 0.04);
+      var halfH = 14 + rFrac * 58;
+      var cy = h / 2;
+      var vx1 = 44, vx2 = w - 44, vw = vx2 - vx1;
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(vx1, cy - halfH - 7, vw, (halfH + 7) * 2);
+      ctx.fillStyle = 'rgba(185, 28, 28, 0.14)';
+      ctx.fillRect(vx1, cy - halfH, vw, halfH * 2);
+
+      var speed = Math.min(2.4, Math.max(0.04, vMean / 140));
+      var count = Math.round(20 + ((state.eta - 0.015) / 0.085) * 44);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(vx1, cy - halfH, vw, halfH * 2);
+      ctx.clip();
+      for (var c = 0; c < count; c++) {
+        var cell = cells[c];
+        var para = Math.max(0.08, 1 - cell.y * cell.y);
+        if (state.playing) {
+          cell.x += speed * para * dt * 0.55;
+          if (cell.x > 1.04) cell.x -= 1.08;
+        }
+        ctx.fillStyle = '#b91c1c';
+        ctx.beginPath();
+        ctx.ellipse(vx1 + cell.x * vw, cy + cell.y * (halfH - 4), 5.5, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.fillStyle = '#334155';
+      ctx.font = '600 12px monospace';
+      ctx.fillText('Q = ' + q.toFixed(2) + ' cm³/s   |   v_media = ' + vMean.toFixed(1) + ' cm/s', 16, 22);
+      requestAnimationFrame(animate);
+    }
+
+    updateUI();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
